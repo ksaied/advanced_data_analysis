@@ -1,0 +1,137 @@
+---
+title: "Study on fertility of *A. thaliana*"
+author: "Karim Saied (karim.saied@unil.ch)"
+date: "November 26th, 2017"
+output: pdf_document
+---
+```{r, echo=FALSE}
+library(Matrix)
+library(lme4)
+arabid = read.csv("arabidopsis.csv", header=TRUE)
+
+nutrient = arabid$nutrient #two-levels factor => fixed
+amd = arabid$amd #two-levels factor => fixed
+
+gen = arabid$gen #twenty-four-levels factor => random
+reg = arabid$reg #three-levels factor => random
+popu = arabid$popu #nine-levels factor => random
+rack = arabid$rack #two-levels factor => random
+status = arabid$status #three-levels factor => random
+
+total.fruits = arabid$total.fruits #discrete variable (response variable)
+
+gen = as.factor(gen)
+rack = as.factor(rack)
+nutrient = as.factor(nutrient)
+```
+
+#1. Question
+
+The aim of the current analysis is to assess the effect of some factors on *Arabidopsis thaliana*'s fertility.
+
+#2. Dataset description
+
+A dataset relative to a study on arabidposis' fertility is analysed. The dataset contains `r nrow(arabid)` observations. The factors assessed are the following:
+
+- `nutrient`: fertilization type. Two-levels factor (`1`: minimal nutrient, `8`: added nutrient)
+- `amd`: simulated herbivory (apical meristem damage). Two-levels factor (`clipped`, `unclipped`)
+- `gen`: genotype. Twenty-four-levels factor (twenty-four genotypes)
+- `reg`: regions indicating where the seeds where collected. Three-levels factor (`NL`: Netherlands, `SP`: Spain, `SW`: Sweden)
+- `popu`: population within each region. Nine-levels factor
+- `rack`: the rack where the plants were stored on. Two-levels factor (one for each greenhouse racks)
+- `status`: the germination method. Three-levels factor (`Normal`, `Petri.Plate`, `Transplant`)
+- `total.fruits`: total fruits produced per plant. Response variable (discrete)
+
+Total fruits produced per plant (`total.fruits`) is the measure of fertility. This is the response variable. Knowing that factors `nutrient` and `amd` were declared as being factors of interest, they both are considered as fixed effects whereas `gen`, `reg`, `popu`, `rack` and `status` are random effets. It has been observed that the variables `gen`, `rack` and `nutrient` were numeric. To correct that, these variables have been set as factors. One must note that populations are nested within their region (Table 1) and genotypes are nested in their population (Table 2).
+
+An overview of the distribution of the response variable shows a Poisson distribution (Figure 1).
+
+One has to take into account that some factors are clearly unbalanced.
+
+Regions:
+```{r, echo=FALSE}
+sort(table(arabid[,1]))
+```
+
+For instance, within the variable `reg`, only 116 plants come from Netherlands whereas 217 and 292 plants come from Sweden and Spain respectively. 
+
+Genotypes:
+```{r, echo=FALSE}
+sort(table(arabid[,3]))
+```
+
+Another example concerns the variable `gen`. Indeed, the genotype 5 is represented by only 11 plants whereas the genotype 35 is represented by 47 plants.
+
+#3. Statistical analysis
+
+As previously mentioned, the response variable `total.fruits` is discrete and fits a Poisson distribution. Moreover, there is a mix of fixed and random effects. Hence, using a generalized linear mixed model fitting a Poisson distribution seems to be a suitable choice.
+
+As a first step, the relashionship between the response variable `total.fruits` and the two fixed effects (`nutrient` and `amd`) is assessed by means of a boxplot. Nevertheless, one has to keep in mind that such visualization only serves to observe trends and nothing can be concluded from it.
+
+```{r, echo=FALSE, fig.height=5}
+boxplot(total.fruits~nutrient*amd, col=c("white","lightgray"), ylab="Total fruits numbers/per plants")
+legend("topleft", legend=c("1: minimal nutrient", "8: added nutrient"))
+```
+
+Based on that boxplot, plants that are fertilized by adding nutrients (`8`) tend to produce far more fruits than plants with minimal-nutrient level (`1`). That difference is observed within both clipped and unclipped plants. However, simulated herbivory does not seem to affect the amount of fruits produced as many as nutrients do. As a matter of fact, it is shown that for fertilized plants (`8`), the amount of fruits produced is almost similar for clipped and unclipped plants. A very slight difference is still observed. Same observation for plants with a minimal-nutrient level (`1`).
+
+\newpage
+##3.1. Generalized linear model
+
+As a second step, the relashionship between fertility and the two fixed effects is assessed using a generalized linear model.
+
+```{r, echo=FALSE}
+pre_model = glm(total.fruits~nutrient*amd, family=poisson)
+summary(pre_model)$coefficients
+```
+
+##3.2. Generalized linear mixed model
+
+Finally, a generalized linear mixed model is performed in order to take into account both fixed and random effects.
+
+###Fixed effects
+```{r, echo=FALSE}
+model = glmer(total.fruits~nutrient*amd+(1|gen)+(1|popu)+(1|rack)+(1|reg)+(1|status), family=poisson)
+summary(model)$coefficients
+```
+
+Regarding the detailed results for the generalized linear model (`glm`) and the generalized linear mixed model (`glmer`), please refer to Table 3 and Table 4 in the *Appendices* section.
+
+#4. Discussion and conclusion
+
+First of all, knowing the coefficients tables of `glm` and `glmer` displayed above, one can note that taking into account random effects does not affect estimates so much. However, one observes an improvement of p-values.
+
+Based on the analysis, adding nutrient affect fertility significantly (p-value < 2e-16). Indeed, fertilized plants tend to produce more fruits than plants with minimal-nutrient level. Simulated herbivory (i.e. clipping) also affects significantly fertility (p-value < 2e-16). As a matter of fact, unclipped plants tend to produce slightly more fruits than clipped ones, which indicates that clipping plants negatively affects fruits production. These results are biologically consistent. Indeed, adding nutrients would allow plants to allocate more energy in reproductive function. Furthermore, wounded plants should invest more energy in defense functions at the expense of reproduction which leads to a reduced fertility.
+
+One has to note that the effect of nutrients is `r round(1.44077/0.45536, 1)` times higher than the effect of simulated herbivory. This means that nutrients affect far more fruits production than the simulated herbivory. Finally, one can see that there is a significant negative interaction between the two fixed effects (p-value < 2e-16). That interaction is unexpected because it indicates that fertilized unclipped plants tend to have a reduced fertility which is not coherent. That last result should be considered with caution.
+
+In conclusion, unclipped condition and fertilization (i.e. adding nutrients) lead to a higher amount of fruits produced and thus to a higher fertility. However, fertilization seems to be major condition for a higher fertility.
+
+#Appendices
+
+##Figure 1
+```{r, echo=FALSE}
+hist(total.fruits, breaks=20, main="Distribution of total fruits number", xlab="Total fruits number/plant")
+```
+
+##Table 1: populations are nested in their region.
+```{r, echo=FALSE}
+xtabs(~reg+popu)
+```
+
+\newpage
+##Table 2: genotypes are nested in populations. 
+```{r, echo=FALSE}
+xtabs(~popu+gen)
+```
+As an example, genotypes 13, 14, 15 are only found in population 1 in Spain. Genotypes 20 and 28 are only found in population 1 in Sweden, and so on.
+
+##Table 3: detailed results for the generalized linear model (`glm`)
+```{r, echo=FALSE}
+summary(pre_model)
+```
+
+##Table 4: detailed results for the generalized linear mixed model (`glmer`)
+```{r, echo=FALSE}
+summary(model)
+```
