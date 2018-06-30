@@ -1,0 +1,66 @@
+---
+title: "Study on birth weight"
+author: "Karim Saied (karim.saied@unil.ch)"
+date: "November 12th, 2017"
+output: pdf_document
+---
+
+```{r, echo=FALSE}
+birthweight <- read.table("birtweight_study.csv", header=TRUE)
+birthweight$lwt <- birthweight$lwt*0.453592
+birthweight$bwt <- birthweight$bwt/1000
+bwt = birthweight$bwt
+lwt = birthweight$lwt
+ht = birthweight$ht 
+age = birthweight$age
+smoke = birthweight$smoke
+ptd = birthweight$ptd
+```
+
+# 1. Question
+
+The aim of the present study is to identify factors linked to a lower birth weight.
+
+# 2. Dataset description
+
+We have analysed a dataset from a study on birth weight and containing observations describing newborns and their mother (`r nrow(birthweight)` entries). 
+
+The newborns are described by the following variables:
+
+- `bwt`: newborn's weight 
+- `ptd`: preterm birth 
+
+The mother is described by the following variables:
+
+- `lwt`: weight befor pregnancy 
+- `age`: age 
+- `smoke`: smoking habits 
+- `ht`: known hypertension 
+
+Regarding the proportions within each factor (i.e. smoking habit, hypertension, preterm birth), it is clear that the dataset is biased:
+
+- `r round(length(which(smoke=="SMOKE"))/length(smoke), 2)*100`% of the mothers smoke.
+- `r round(length(which(ht=="HT"))/length(ht), 2)*100`% of the mothers have hypertension.
+- `r round(length(which(ptd=="PPREM"))/length(ptd), 2)*100`% of the newborns are prematured.
+
+These propotions are not representative of the population. Indeed According to the Centers for Disease Control and Prevention (CDC), the preterm birth rate in the US was 9.85% in 2016 and 15.1% of the adults were smokers in 2015. Regarding hypertension, one third of the US population is concerned (Merai et al., 2016).
+
+# 3. Results
+
+```{r, echo=FALSE, fig.height=6}
+model <- lm(bwt~lwt+smoke+ptd+ht)
+mod_sum <- summary(model)
+```
+
+The analysis shows that the factors linked to a lower newborn's weight are the following:
+
+- A low mother's weight befor pregnancy (p-value = `r round(as.numeric(summary(model)$coefficients[,4][2]), 3)`).
+- A non-smoker habit (p-value = `r round(as.numeric(summary(model)$coefficients[,4][3]), 3)`).
+- A full term delivery (p-value = `r round(as.numeric(summary(model)$coefficients[,4][4]), 3)`).
+- No hypertension (p-value = `r round(as.numeric(summary(model)$coefficients[,4][5]), 3)`).
+
+The age showed no significant influence on newborn's weight. Surprisingly, the statistical analysis showed that a full term delivery lead to a lower birth weight which is unexpected.
+
+#4. Conclusion
+
+Knowing unexpected results, the small sample size (`r nrow(birthweight)` entries) and the dataset bias, the results should be considered with caution. As it is carried out, the original study should not be taken seriously unless it is reshaped and conducted on a bigger sample size.

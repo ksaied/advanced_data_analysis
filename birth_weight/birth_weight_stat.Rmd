@@ -1,0 +1,125 @@
+---
+title: "Study on birth weight"
+author: "Karim Saied (karim.saied@unil.ch)"
+date: "November 12th, 2017"
+output: pdf_document
+---
+
+```{r, echo=FALSE}
+birthweight <- read.table("birtweight_study.csv", header=TRUE)
+birthweight$lwt <- birthweight$lwt*0.453592
+birthweight$bwt <- birthweight$bwt/1000
+bwt = birthweight$bwt
+lwt = birthweight$lwt
+ht = birthweight$ht 
+age = birthweight$age
+smoke = birthweight$smoke
+ptd = birthweight$ptd
+```
+
+# 1. Question
+
+The aim of the present study is to identify factors linked to a lower birth weight.
+
+# 2. Dataset description
+
+We have analysed a dataset from a study on birth weight and containing observations describing newborns and their mother (`r nrow(birthweight)` entries). 
+
+The newborns are described by the following variables:
+
+- `bwt`: newborn weight (continous variable)
+- `ptd`: preterm birth (two-levels factor)
+
+The mother is described by the following variables:
+
+- `lwt`: weight befor pregnancy (continuous variable)
+- `age`: age (discret variable)
+- `smoke`: smoking habits (two-levels factor)
+- `ht`: known hypertension (two-levels factor)
+
+First of all, no indication was provided regarding the unit of measurement of the weights. However, it is clear that this unit seems to differ between the newborns and the mothers. Indeed, the newborn's and mother's weight seem to be given in grams and pounds respectively. An unit conversion was performed in order to set both variables in kilograms.
+
+Regarding the proportions within each factor (i.e. `smoke`, `ht`, `ptd`), it is clear that the dataset is biased:
+
+```{r, echo=FALSE}
+library(knitr)
+kable(summary(birthweight)[1:2,c(3,4,6)])
+```
+
+- `r round(length(which(smoke=="SMOKE"))/length(smoke), 2)*100`% of the mothers smoke.
+- `r round(length(which(ht=="HT"))/length(ht), 2)*100`% of the mothers have hypertension.
+- `r round(length(which(ptd=="PPREM"))/length(ptd), 2)*100`% of the newborns are prematured.
+
+These propotions are not representative of the population. According to the Centers for Disease Control and Prevention (CDC), the preterm birth rate in the US was 9.85% in 2016 and 15.1% of the adults were smokers in 2015. Regarding hypertension, one third of the US population is concerned (Merai et al., 2016).
+
+\newpage
+# 3. Pre-analysis
+
+Knowing the aim of the present analysis the newborn's weight (`bwt`) is considered as the response variable. Before any analysis, a data visualisation is performed.
+
+```{r, echo = FALSE}
+par(mfrow=c(2,3))
+plot(bwt~lwt+smoke+ptd+ht+age, ylab="birth weight [kg]")
+```
+
+As shown in the boxplots, it seems to be a trend between the newborn's weight and the different factors. Indeed, mothers with hypertension as well as the ones that smoke tend to have heavier babies. Surprisingly, prematured newborns seem to be heavier than the others. This unexpected observation should lead us to consider the data with caution.
+
+\newpage
+# 4. Statistical analysis
+
+In order to assess the factors linked to a lower birth weight, a linear model is performed.
+
+## 4.1. Final model
+```{r, echo=FALSE, fig.height=6}
+pre_model <- lm(bwt~lwt+smoke+ptd+ht+age)
+par(mfrow=c(2,2))
+plot(pre_model)
+```
+
+The graph in the top left corner (Residuals vs Fitted) shows no structure in the data as well as the graph in the bottom left corner. The top right graph shows that the residus are normally distributed. Taken together, these graphs show that a linear model is a suitable approach for the analysis.
+
+\newpage
+```{r, echo=FALSE}
+summary(pre_model)
+```
+
+*Note: several models have been tested in order to assess a possible interaction between the factors. The factors have been tested in pairs for an interaction because making a biological interpretation with several interactions between multiple factors would be complex and risky. The following model was one of the models tested for an interaction:*
+
+```{r}
+model_int <- lm(bwt~ht*smoke+ptd+lwt+age)
+```
+
+*None of them highlighted a significant interaction between the factors. As a consequence the factors have been considered as independent in the final model.*
+
+The final model shows that the age do not influence significantly the newborn's weight (p-value = `r round(as.numeric(summary(pre_model)$coefficients[,4][6]), 3)`). Moreover, none of the models tested before (i.e. models tested for an interaction) shown significant influence of the age on newborn's weight. As a consequence, the age was excluded from the final model and a final model adjusted was performed.
+
+\newpage
+## 4.2. Final model adjusted
+
+The model was reshaped without the age factor. 
+
+```{r, echo=FALSE, fig.height=6}
+model <- lm(bwt~lwt+smoke+ptd+ht)
+par(mfrow=c(2,2))
+plot(model)
+```
+
+The residus are still normally distributed and no structure is present in the data. The linear model without the age factor is analysed.
+
+\newpage
+```{r, echo=FALSE}
+summary(model)
+```
+
+#5. Discussion and conclusion
+
+The linear model shows that mother's weight befor pregnancy, smoking habit, hypertension and preterm delivery influence the newborn's weight significantly. On the contrary, the age had no significant influence. According to the statistical results and as observed previously with boxplots, prematured newborns are heavier than the others which is unexpected.
+
+The factors are linked to a lower newborn's weight in the following way:
+
+- A low mother's weight befor pregnancy (p-value = `r round(as.numeric(summary(model)$coefficients[,4][2]), 3)`).
+- A non-smoker habit (p-value = `r round(as.numeric(summary(model)$coefficients[,4][3]), 3)`).
+- A full term delivery (p-value = `r round(as.numeric(summary(model)$coefficients[,4][4]), 3)`).
+- No hypertension (p-value = `r round(as.numeric(summary(model)$coefficients[,4][5]), 3)`).
+
+Knowing unexpected results, the small sample size (`r nrow(birthweight)` entries) and the dataset bias, the results should be considered with caution. Although the current statistical analysis should be carried out on a bigger sample size, the experimental design of the original study should however be reshaped.
